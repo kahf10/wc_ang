@@ -76,6 +76,9 @@ function renderLeaderboard(records, elements) {
   if (leader && leader.updated) {
     elements.footerUpdated.textContent = `Last updated: ${leader.updated}`;
   }
+
+  const managerNames = records.map((r) => r.name).filter(Boolean);
+  window.dispatchEvent(new CustomEvent("wc:managers-loaded", { detail: { managers: managerNames } }));
 }
 
 function renderHeroStatus(heroStatus, records) {

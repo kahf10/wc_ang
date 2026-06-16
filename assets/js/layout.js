@@ -25,6 +25,7 @@ export function renderLeagueLayout(config) {
           <li><a href="#rules">Rules</a></li>
           <li><a href="#faq">FAQ</a></li>
         </ul>
+        <div id="nav-user" class="nav-user"></div>
       </div>
     </nav>
 
@@ -59,6 +60,7 @@ export function renderLeagueLayout(config) {
         </div>
 
         <div class="wc-strip" id="wc-upcoming-strip"></div>
+        <div class="predict-swiper-mount" id="wc-predict-swiper"></div>
       </div>
     </section>
 

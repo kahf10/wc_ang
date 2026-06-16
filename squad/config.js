@@ -8,4 +8,7 @@ window.WC_ANG_CONFIG = {
   predictionPulseCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE82IOywT0dgnYZtt1gf4DVNDejkFf0HyXT7rtOWr1j5G288jfSC0tTy3OKvmUtTrmjPFKR-j5ZZw4/pub?gid=479479791&single=true&output=csv",
   resultsCsvUrl: "",
   resultsLimit: 9,
+  // Apps Script Web App URL for shared prediction sync. Leave blank to fall
+  // back to device-only (localStorage) predictions. See tools/SETUP.md.
+  predictionsApiUrl: "",
 };

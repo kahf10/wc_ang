@@ -1,8 +1,12 @@
 import { getSiteConfig, validateSiteConfig } from "./config.js";
 import { requireElement, setHidden, setStatus } from "./dom.js";
-import { renderLeagueLayout } from "./layout.js?v=pulse-reorder-20260613f";
-import { loadLeaderboard } from "./leaderboard.js?v=pulse-reorder-20260613f";
-import { renderWcResultsStrip } from "../wc2026/wc-results-strip.js?v=pulse-reorder-20260613f";
+import { renderLeagueLayout } from "./layout.js?v=predictions-20260616b";
+import { loadLeaderboard } from "./leaderboard.js?v=predictions-20260616b";
+import { renderWcResultsStrip } from "../wc2026/wc-results-strip.js?v=predictions-20260616b";
+import { initUserPicker } from "./user-picker.js";
+import { initPredictDialog } from "./predict-dialog.js";
+import { renderPredictSwiper } from "./predict-swiper.js?v=predictions-20260616b";
+import { initPredictionsSync } from "./predictions.js?v=predictions-20260616c";
 
 const WC_RESULTS_REFRESH_MS = 60 * 60 * 1000;
 
@@ -13,6 +17,9 @@ function bootstrap() {
 
   try {
     renderLeagueLayout(config);
+    initUserPicker();
+    initPredictDialog();
+    initPredictionsSync(config);
     const elements = getRequiredElements();
     const missingConfig = validateSiteConfig(config);
 
@@ -42,12 +49,16 @@ function loadWcResultsStrip(config) {
   try {
     const upcomingMountEl = requireElement("wc-upcoming-strip");
     const finalsMountEl = requireElement("wc-finals-strip");
+    const predictSwiperMountEl = requireElement("wc-predict-swiper");
 
     renderWcResultsStrip(upcomingMountEl, { config, variant: "upcoming" }).catch((error) => {
       console.error("Could not render World Cup results strip:", error);
     });
     renderWcResultsStrip(finalsMountEl, { config, variant: "finished" }).catch((error) => {
       console.error("Could not render World Cup finals strip:", error);
+    });
+    renderPredictSwiper(predictSwiperMountEl, { config }).catch((error) => {
+      console.error("Could not render predict swiper:", error);
     });
 
     window.setInterval(() => {
@@ -56,6 +67,9 @@ function loadWcResultsStrip(config) {
       });
       renderWcResultsStrip(finalsMountEl, { config, variant: "finished", forceRefresh: true }).catch((error) => {
         console.error("Could not refresh World Cup finals strip:", error);
+      });
+      renderPredictSwiper(predictSwiperMountEl, { config, forceRefresh: true }).catch((error) => {
+        console.error("Could not refresh predict swiper:", error);
       });
     }, WC_RESULTS_REFRESH_MS);
   } catch (error) {

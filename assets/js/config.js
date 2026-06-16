@@ -10,6 +10,7 @@ export function getSiteConfig(rawConfig = window.WC_ANG_CONFIG || {}) {
     resultsLimit: Number(rawConfig.resultsLimit || rawConfig.RESULTS_LIMIT || DEFAULT_RESULTS_LIMIT),
     predictionPulseCsvUrl:
       rawConfig.predictionPulseCsvUrl || rawConfig.PREDICTION_PULSE_CSV_URL || "",
+    predictionsApiUrl: rawConfig.predictionsApiUrl || rawConfig.PREDICTIONS_API_URL || "",
   };
 
   if (!config.theme && config.groupName) {

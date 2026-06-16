@@ -1,6 +1,23 @@
 import { clearElement, createElement, numberOrZero, setHidden } from "../js/dom.js";
 import { parseCSV } from "../js/csv.js";
 import { getMatches } from "./wc-data.js";
+import { getCurrentUser, getPrediction } from "../js/predictions.js?v=predictions-20260616c";
+
+// Reactive: update a single card's prediction slot when a prediction is saved
+window.addEventListener("wc:prediction-saved", (e) => {
+  const card = document.querySelector(`.wc-card[data-match-id="${e.detail.matchId}"]`);
+  if (card) updatePredSlot(card);
+});
+
+// Reactive: update all cards when the active user changes
+window.addEventListener("wc:user-changed", () => {
+  document.querySelectorAll(".wc-card[data-match-id]").forEach(updatePredSlot);
+});
+
+// Reactive: update all cards once a remote sync pulls in fresh picks
+window.addEventListener("wc:predictions-synced", () => {
+  document.querySelectorAll(".wc-card[data-match-id]").forEach(updatePredSlot);
+});
 
 const FINISHED_LIMIT = 8;
 const UPCOMING_LIMIT = 8;
@@ -84,7 +101,7 @@ function renderMatchSet(mountEl, matches, pulseByMatchId, title, emptyText, prev
   mountEl.appendChild(createMatchRail(title, matches, pulseByMatchId, prevLabel, nextLabel, railOptions));
 }
 
-function getUpcomingMatches(matches, now) {
+export function getUpcomingMatches(matches, now) {
   const activeMatches = matches
     .filter((match) => match.status !== "finished")
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -113,7 +130,20 @@ function createMatchRail(title, matches, pulseByMatchId, prevLabel, nextLabel, r
 }
 
 function createMatchCard(match, pulse, options = {}) {
-  const card = createElement("article", { className: "wc-card" });
+  const card = createElement("article", {
+    className: "wc-card",
+    attrs: {
+      "data-match-id": match.id,
+      "data-stage": match.stage,
+      "data-status": match.status,
+      "data-winner": match.winner || "",
+      "data-home-code": match.home?.code || "",
+      "data-away-code": match.away?.code || "",
+      "data-home-name": match.home?.name || "",
+      "data-away-name": match.away?.name || "",
+      "data-date": match.date,
+    },
+  });
   const top = createElement("div", { className: "wc-top" });
 
   top.append(
@@ -145,6 +175,12 @@ function createMatchCard(match, pulse, options = {}) {
 
   if (pulse) {
     card.appendChild(createPulse(pulse, match, options));
+  }
+
+  if (match.stage === "group") {
+    const predSlot = createElement("div", { className: "wc-user-pred" });
+    card.appendChild(predSlot);
+    updatePredSlot(card);
   }
 
   return card;
@@ -358,6 +394,88 @@ function normalizeTeamName(value) {
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "");
+}
+
+function updatePredSlot(card) {
+  const slot = card.querySelector(".wc-user-pred");
+  if (!slot) return;
+
+  const { matchId, status, winner, homeCode, awayCode, homeName, awayName, date } = card.dataset;
+  const user = getCurrentUser();
+
+  slot.innerHTML = "";
+
+  if (!user) {
+    const noUserBtn = createElement("button", {
+      className: "pred-who-btn",
+      attrs: { type: "button" },
+      text: "Log in to predict",
+    });
+    noUserBtn.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("wc:open-user-modal"));
+    });
+    slot.appendChild(noUserBtn);
+    return;
+  }
+
+  const pick = getPrediction(matchId);
+  const now = new Date();
+  const isStarted = now >= new Date(date);
+
+  if (status === "finished") {
+    const isCorrect =
+      (pick === "home" && winner === homeCode) ||
+      (pick === "away" && winner === awayCode) ||
+      (pick === "draw" && !winner);
+
+    if (!pick) {
+      slot.appendChild(createElement("span", { className: "pred-none", text: "No prediction" }));
+    } else {
+      const label = pick === "home" ? homeName : pick === "away" ? awayName : "Draw";
+      slot.appendChild(createElement("span", { className: "pred-pick-label", text: `Your pick: ${label}` }));
+      slot.appendChild(
+        createElement("span", {
+          className: isCorrect ? "pred-correct" : "pred-wrong",
+          text: isCorrect ? "✓ Correct" : "✗ Wrong",
+        })
+      );
+    }
+    return;
+  }
+
+  // Upcoming / live
+  if (pick) {
+    const label = pick === "home" ? homeName : pick === "away" ? awayName : "Draw";
+    slot.appendChild(createElement("span", { className: "pred-badge", text: `✓ ${label}` }));
+  }
+
+  if (!isStarted) {
+    const btn = createElement("button", {
+      className: "pred-btn",
+      attrs: { type: "button" },
+      text: pick ? "Edit" : "Predict",
+    });
+    btn.addEventListener("click", () => {
+      window.dispatchEvent(
+        new CustomEvent("wc:predict-click", {
+          detail: {
+            match: {
+              id: matchId,
+              stage: card.dataset.stage,
+              status,
+              winner: winner || null,
+              date,
+              home: { code: homeCode, name: homeName },
+              away: { code: awayCode, name: awayName },
+            },
+          },
+        })
+      );
+    });
+    slot.appendChild(btn);
+  } else if (!pick) {
+    slot.appendChild(createElement("span", { className: "pred-locked", text: "Locked" }));
+  }
 }
 
 function createFlag(side) {

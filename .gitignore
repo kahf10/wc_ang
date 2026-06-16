@@ -24,3 +24,10 @@ recent_results_paste.tsv
 # Python
 __pycache__/
 *.pyc
+
+# Claude Code local session/config — not for sharing in the repo
+.claude/
+
+# Working-copy spreadsheet exports / extracted data — never commit raw data dumps
+*.csv
+wc_ang_DagiUnited (Working Copy)*
