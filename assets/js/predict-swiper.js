@@ -1,6 +1,5 @@
 import { createElement, clearElement } from "./dom.js";
 import { getMatches } from "../wc2026/wc-data.js";
-import { getUpcomingMatches } from "../wc2026/wc-results-strip.js";
 import { getCurrentUser, getPrediction, savePrediction, getAllPicksForMatch } from "./predictions.js?v=predictions-20260616c";
 
 const SWIPE_THRESHOLD = 70;
@@ -15,7 +14,7 @@ let drag = null;
 export async function renderPredictSwiper(mountEl, options = {}) {
   mountRef = mountEl;
   const allMatches = await getMatches(options);
-  const upcoming = getUpcomingMatches(allMatches, new Date()).filter((m) => m.stage === "group");
+  const upcoming = getMatchesForNextTwoDays(allMatches, new Date()).filter((m) => m.stage === "group");
 
   const previousMatchId = matches[currentIndex]?.id;
   matches = upcoming;
@@ -23,6 +22,29 @@ export async function renderPredictSwiper(mountEl, options = {}) {
   currentIndex = restoredIndex >= 0 ? restoredIndex : 0;
 
   draw();
+}
+
+// Shows every not-yet-finished group match that kicks off today or tomorrow
+// (local time) — including late-night ones — rather than capping at a fixed
+// count or falling back to "all matches" when today is empty.
+function getMatchesForNextTwoDays(allMatches, now) {
+  const today = startOfLocalDay(now);
+  const dayAfterTomorrow = new Date(today);
+  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+  return allMatches
+    .filter((match) => match.status !== "finished")
+    .filter((match) => {
+      const matchDate = new Date(match.date);
+      return matchDate >= today && matchDate < dayAfterTomorrow;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function startOfLocalDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 window.addEventListener("wc:prediction-saved", () => {
